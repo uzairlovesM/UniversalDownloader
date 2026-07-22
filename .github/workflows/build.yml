@@ -27,8 +27,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Restore keystore from secret
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore.jks
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release.keystore.jks
 
       - name: Decode google-services.json (if present)
         run: |
@@ -39,18 +38,39 @@ jobs:
           fi
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace --info
+        run: ./gradlew assembleDebug --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build Release APK
-        if: success()
-        run: ./gradlew assembleRelease --stacktrace --info
+      - name: Build Release APKs (split + universal)
+        run: ./gradlew assembleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         continue-on-error: true
+
+      - name: Build Release AAB (App Bundle)
+        run: ./gradlew bundleRelease --stacktrace
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        continue-on-error: true
+
+      - name: Organize release artifacts
+        if: always()
+        run: |
+          mkdir -p release-artifacts
+          find app/build/outputs/apk -name "*.apk" -exec cp {} release-artifacts/ \; 2>/dev/null || true
+          find app/build/outputs/bundle -name "*.aab" -exec cp {} release-artifacts/ \; 2>/dev/null || true
+          echo "=== Artifacts collected ==="
+          ls -la release-artifacts/ || echo "No artifacts found"
+
+      - name: Generate SHA256 checksums
+        if: always()
+        run: |
+          cd release-artifacts 2>/dev/null && sha256sum * > checksums.sha256.txt 2>/dev/null || echo "No files to checksum"
+          cat release-artifacts/checksums.sha256.txt 2>/dev/null || true
 
       - name: Upload Debug APK
         if: always()
@@ -60,12 +80,28 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: ignore
 
-      - name: Upload Release APK
+      - name: Upload Release APKs (split + universal)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-apk
+          name: release-apks-split
           path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: ignore
+
+      - name: Upload Release AAB
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-aab
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: ignore
+
+      - name: Upload checksums
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checksums
+          path: release-artifacts/checksums.sha256.txt
           if-no-files-found: ignore
 
       - name: Upload full build logs
