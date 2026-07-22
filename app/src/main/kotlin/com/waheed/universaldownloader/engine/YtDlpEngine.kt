@@ -1,98 +1,94 @@
 package com.waheed.universaldownloader.engine
 
 import android.content.Context
+import com.yausername.youtubedl_android.YoutubeDL
+import com.yausername.youtubedl_android.YoutubeDLRequest
+import com.yausername.youtubedl_android.mapper.VideoInfo
+import com.yausername.ffmpeg.FFmpeg
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Wraps the bundled yt-dlp standalone binary.
- * On first run, copies the binary from assets into the app's private
- * files directory (where it can be marked executable) and invokes it
- * via ProcessBuilder for every subsequent operation.
+ * Wraps youtubedl-android (GPL-3.0), which bundles yt-dlp + a Python runtime
+ * and an ffmpeg binary internally. This class is our single point of contact
+ * with the download engine — the rest of the app never talks to YoutubeDL directly.
  */
 @Singleton
 class YtDlpEngine @Inject constructor(
     private val context: Context
 ) {
-    private val binaryName = "yt-dlp"
-    private val binaryFile: File by lazy { File(context.filesDir, binaryName) }
+    private var isInitialized = false
 
-    /** Copies the binary out of assets and chmod +x's it. Call once at app startup. */
-    suspend fun ensureBinaryReady(): Boolean = withContext(Dispatchers.IO) {
+    /** Must be called once (e.g. in UDApplication.onCreate) before any other method. */
+    suspend fun initialize(): Boolean = withContext(Dispatchers.IO) {
+        if (isInitialized) return@withContext true
         try {
-            if (!binaryFile.exists() || binaryFile.length() == 0L) {
-                context.assets.open("bin/$binaryName").use { input ->
-                    binaryFile.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
-                }
-                binaryFile.setExecutable(true, false)
-            }
-            binaryFile.exists() && binaryFile.canExecute()
+            YoutubeDL.getInstance().init(context)
+            FFmpeg.getInstance().init(context)
+            isInitialized = true
+            true
         } catch (e: Exception) {
             false
         }
     }
 
-    /** Fetches metadata (title, formats, thumbnail) for a URL without downloading it. */
-    suspend fun fetchInfo(url: String): Result<String> = withContext(Dispatchers.IO) {
+    /** Fetches metadata (title, thumbnail, available formats) without downloading. */
+    suspend fun fetchInfo(url: String): Result<VideoInfo> = withContext(Dispatchers.IO) {
         runCatching {
-            val process = ProcessBuilder(
-                binaryFile.absolutePath,
-                "--dump-json",
-                "--no-playlist",
-                url
-            ).redirectErrorStream(false).start()
-
-            val output = process.inputStream.bufferedReader().readText()
-            val error = process.errorStream.bufferedReader().readText()
-            val exitCode = process.waitFor()
-
-            if (exitCode != 0) {
-                throw RuntimeException("yt-dlp failed (code $exitCode): $error")
-            }
-            output
+            YoutubeDL.getInstance().getInfo(url)
         }
     }
 
-    /** Downloads a URL at the given format/quality into the target directory. */
+    /**
+     * Downloads a URL at the given format/quality into outputDir.
+     * formatSelector examples: "best", "bestaudio", "bestvideo[height<=720]+bestaudio"
+     */
     suspend fun download(
         url: String,
         outputDir: String,
         formatSelector: String = "best",
-        onProgress: (String) -> Unit = {}
+        onProgress: (progressPercent: Float, etaSeconds: Long, line: String) -> Unit = { _, _, _ -> }
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
-            val process = ProcessBuilder(
-                binaryFile.absolutePath,
-                "-f", formatSelector,
-                "-o", "$outputDir/%(title)s.%(ext)s",
-                "--newline",
-                url
-            ).redirectErrorStream(true).start()
-
-            val outputLines = StringBuilder()
-            process.inputStream.bufferedReader().forEachLine { line ->
-                onProgress(line)
-                outputLines.appendLine(line)
+            val request = YoutubeDLRequest(url).apply {
+                addOption("-f", formatSelector)
+                addOption("-o", "$outputDir/%(title)s.%(ext)s")
+                addOption("--no-mtime")
             }
-            val exitCode = process.waitFor()
-            if (exitCode != 0) {
-                throw RuntimeException("Download failed (code $exitCode)")
+            val response = YoutubeDL.getInstance().execute(request) { progress, eta, line ->
+                onProgress(progress, eta, line)
             }
-            outputLines.toString()
+            response.out
         }
     }
 
-    fun getEngineVersion(): String? {
+    /** Extracts audio-only (MP3) from a URL — used for the "Audio" quality option. */
+    suspend fun downloadAudioOnly(
+        url: String,
+        outputDir: String,
+        onProgress: (progressPercent: Float, etaSeconds: Long, line: String) -> Unit = { _, _, _ -> }
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            val request = YoutubeDLRequest(url).apply {
+                addOption("-x")
+                addOption("--audio-format", "mp3")
+                addOption("-o", "$outputDir/%(title)s.%(ext)s")
+                addOption("--no-mtime")
+            }
+            val response = YoutubeDL.getInstance().execute(request) { progress, eta, line ->
+                onProgress(progress, eta, line)
+            }
+            response.out
+        }
+    }
+
+    fun getEngineVersion(): String {
         return try {
-            val process = ProcessBuilder(binaryFile.absolutePath, "--version").start()
-            process.inputStream.bufferedReader().readText().trim().also { process.waitFor() }
+            YoutubeDL.getInstance().version(context) ?: "unknown"
         } catch (e: Exception) {
-            null
+            "unknown"
         }
     }
 }
