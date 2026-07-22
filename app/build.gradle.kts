@@ -60,7 +60,7 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-}
+
 
     splits {
         abi {
@@ -76,6 +76,7 @@ android {
         density { enableSplit = true }
         abi { enableSplit = true }
     }
+}
 
 dependencies {
     // Core & Compose
