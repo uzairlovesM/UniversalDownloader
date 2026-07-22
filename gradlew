@@ -1,3 +1,21 @@
 #!/bin/sh
-DIR="$(cd "$(dirname "$0")" && pwd)"
-exec java -jar "$DIR/gradle/wrapper/gradle-wrapper.jar" "$@"
+
+##############################################################################
+# Gradle start up script for POSIX
+##############################################################################
+
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+APP_HOME=$(cd "$(dirname "$0")" && pwd)
+APP_NAME="Gradle"
+CLASSPATH="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+
+JAVACMD="java"
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD="$JAVA_HOME/bin/java"
+fi
+
+exec "$JAVACMD" $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS \
+  "-Dorg.gradle.appname=$APP_NAME" \
+  -classpath "$CLASSPATH" \
+  org.gradle.wrapper.GradleWrapperMain "$@"
