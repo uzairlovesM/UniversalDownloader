@@ -81,6 +81,9 @@ android {
 }
 
 dependencies {
+    // Download engine (yt-dlp wrapper, GPL-3.0)
+    implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-crashlytics-ktx")
