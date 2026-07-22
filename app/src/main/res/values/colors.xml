@@ -1,0 +1,6 @@
+<resources>
+    <color name="amber_primary">#FFA726</color>
+    <color name="amber_dark">#F57C00</color>
+    <color name="background_dark">#121212</color>
+    <color name="surface_dark">#1E1E1E</color>
+</resources>

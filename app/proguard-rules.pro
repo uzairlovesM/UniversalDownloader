@@ -1,0 +1,5 @@
+-keep class com.waheed.universaldownloader.** { *; }
+-keep class org.chromium.** { *; }
+-dontwarn org.chromium.**
+-keepattributes Signature
+-keepattributes *Annotation*
