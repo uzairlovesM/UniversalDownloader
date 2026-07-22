@@ -62,6 +62,21 @@ android {
     }
 }
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
+            isUniversalApk = true
+        }
+    }
+
+    bundle {
+        language { enableSplit = true }
+        density { enableSplit = true }
+        abi { enableSplit = true }
+    }
+
 dependencies {
     // Core & Compose
     implementation("androidx.core:core-ktx:1.13.1")
