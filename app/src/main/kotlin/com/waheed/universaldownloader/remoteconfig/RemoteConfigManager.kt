@@ -1,8 +1,8 @@
 package com.waheed.universaldownloader.remoteconfig
 
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
+import com.google.firebase.remoteconfig.remoteConfig
+import com.google.firebase.remoteconfig.remoteConfigSettings
 import com.google.firebase.Firebase
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
