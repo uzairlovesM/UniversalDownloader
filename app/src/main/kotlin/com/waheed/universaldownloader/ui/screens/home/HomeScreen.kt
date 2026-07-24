@@ -1,5 +1,7 @@
 package com.waheed.universaldownloader.ui.screens.home
 
+import androidx.compose.material3.ExperimentalMaterial3Api
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -57,6 +59,7 @@ private val sampleRecents = listOf(
     RecentDownload("Extracted audio track", "TikTok", true)
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController) {
     val clipboardManager = LocalClipboardManager.current
@@ -219,6 +222,7 @@ fun HomeScreen(navController: NavHostController) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SiteChip(site: SupportedSite) {
     GlassCard(cornerRadius = 20) {
@@ -233,6 +237,7 @@ private fun SiteChip(site: SupportedSite) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RecentDownloadRow(item: RecentDownload) {
     val scale by animateFloatAsState(targetValue = 1f, animationSpec = tween(300), label = "rowScale")
@@ -274,6 +279,7 @@ private fun RecentDownloadRow(item: RecentDownload) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EmptyState() {
     GlassCard(modifier = Modifier.fillMaxWidth(), cornerRadius = 20) {
