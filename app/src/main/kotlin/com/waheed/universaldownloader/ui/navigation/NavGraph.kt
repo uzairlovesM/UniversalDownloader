@@ -1,16 +1,19 @@
 package com.waheed.universaldownloader.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.waheed.universaldownloader.ui.screens.splash.SplashScreen
 import com.waheed.universaldownloader.ui.screens.onboarding.OnboardingScreen
 import com.waheed.universaldownloader.ui.screens.home.HomeScreen
+import com.waheed.universaldownloader.ui.screens.preview.PreviewScreen
+import java.net.URLDecoder
 
 @Composable
 fun UDNavGraph(navController: NavHostController = rememberNavController()) {
@@ -53,6 +56,14 @@ fun UDNavGraph(navController: NavHostController = rememberNavController()) {
         }
         composable(NavRoutes.HOME) {
             HomeScreen(navController = navController)
+        }
+        composable(
+            route = NavRoutes.PREVIEW,
+            arguments = listOf(navArgument("link") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val encodedLink = backStackEntry.arguments?.getString("link").orEmpty()
+            val link = URLDecoder.decode(encodedLink, "UTF-8")
+            PreviewScreen(url = link, navController = navController)
         }
     }
 }
