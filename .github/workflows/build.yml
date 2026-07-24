@@ -43,7 +43,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build Release APKs (split + universal)
+      - name: Build Release APKs (universal + split ABIs)
         run: ./gradlew assembleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -57,20 +57,53 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         continue-on-error: true
 
-      - name: Organize release artifacts
+      - name: Organize and label release artifacts
         if: always()
         run: |
-          mkdir -p release-artifacts
-          find app/build/outputs/apk -name "*.apk" -exec cp {} release-artifacts/ \; 2>/dev/null || true
-          find app/build/outputs/bundle -name "*.aab" -exec cp {} release-artifacts/ \; 2>/dev/null || true
-          echo "=== Artifacts collected ==="
-          ls -la release-artifacts/ || echo "No artifacts found"
+          mkdir -p artifacts/universal artifacts/split-abi artifacts/aab
 
-      - name: Generate SHA256 checksums
+          # Universal APK — the one file most users should install
+          find app/build/outputs/apk/release -iname "*universal*.apk" -exec cp {} artifacts/universal/ \; 2>/dev/null || true
+
+          # Split ABI APKs — advanced users / smaller downloads
+          find app/build/outputs/apk/release -iname "*.apk" ! -iname "*universal*" -exec cp {} artifacts/split-abi/ \; 2>/dev/null || true
+
+          # AAB — for potential future Play Store or advanced installers
+          find app/build/outputs/bundle/release -iname "*.aab" -exec cp {} artifacts/aab/ \; 2>/dev/null || true
+
+          echo "=== Universal APK ==="
+          ls -la artifacts/universal/ 2>/dev/null || echo "none"
+          echo "=== Split ABI APKs ==="
+          ls -la artifacts/split-abi/ 2>/dev/null || echo "none"
+          echo "=== AAB ==="
+          ls -la artifacts/aab/ 2>/dev/null || echo "none"
+
+      - name: Generate checksums and release notes
         if: always()
         run: |
-          cd release-artifacts 2>/dev/null && sha256sum * > checksums.sha256.txt 2>/dev/null || echo "No files to checksum"
-          cat release-artifacts/checksums.sha256.txt 2>/dev/null || true
+          cd artifacts
+          find . -type f \( -iname "*.apk" -o -iname "*.aab" \) -exec sha256sum {} \; > checksums.sha256.txt 2>/dev/null || true
+
+          cat > RELEASE_NOTES.txt << 'NOTES_EOF'
+          Universal Downloader — Build Artifacts Guide
+          =============================================
+
+          UNIVERSAL APK (install this — works on all Android devices):
+            Download "universal-apk" artifact -> extract -> install the single .apk inside.
+
+          SPLIT ABI APKs (smaller size, advanced users only):
+            Download "split-abi-apks" artifact -> extract -> pick the ONE file matching your
+            device's processor (arm64-v8a covers almost all modern phones) -> install only that one.
+            Do NOT install all 4 — they are not meant to be combined manually outside Play Store.
+
+          AAB (App Bundle):
+            For future Play Store submission or advanced bundle-aware installers.
+            Not directly installable on a phone by itself.
+
+          Verify integrity: compare checksums.sha256.txt against the downloaded file.
+          NOTES_EOF
+
+          cat RELEASE_NOTES.txt
 
       - name: Upload Debug APK
         if: always()
@@ -80,28 +113,38 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: ignore
 
-      - name: Upload Release APKs (split + universal)
+      - name: Upload Universal APK (install this)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-apks-split
-          path: app/build/outputs/apk/release/*.apk
+          name: universal-apk
+          path: artifacts/universal/*.apk
           if-no-files-found: ignore
 
-      - name: Upload Release AAB
+      - name: Upload Split ABI APKs (advanced)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-aab
-          path: app/build/outputs/bundle/release/*.aab
+          name: split-abi-apks
+          path: artifacts/split-abi/*.apk
           if-no-files-found: ignore
 
-      - name: Upload checksums
+      - name: Upload AAB (App Bundle)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: checksums
-          path: release-artifacts/checksums.sha256.txt
+          name: app-bundle-aab
+          path: artifacts/aab/*.aab
+          if-no-files-found: ignore
+
+      - name: Upload checksums + release notes
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-info
+          path: |
+            artifacts/checksums.sha256.txt
+            artifacts/RELEASE_NOTES.txt
           if-no-files-found: ignore
 
       - name: Upload full build logs
