@@ -13,6 +13,7 @@ import com.waheed.universaldownloader.ui.screens.splash.SplashScreen
 import com.waheed.universaldownloader.ui.screens.onboarding.OnboardingScreen
 import com.waheed.universaldownloader.ui.screens.home.HomeScreen
 import com.waheed.universaldownloader.ui.screens.preview.PreviewScreen
+import com.waheed.universaldownloader.ui.screens.progress.ProgressScreen
 import java.net.URLDecoder
 
 @Composable
@@ -64,6 +65,36 @@ fun UDNavGraph(navController: NavHostController = rememberNavController()) {
             val encodedLink = backStackEntry.arguments?.getString("link").orEmpty()
             val link = URLDecoder.decode(encodedLink, "UTF-8")
             PreviewScreen(url = link, navController = navController)
+        }
+        composable(
+            route = NavRoutes.PROGRESS,
+            arguments = listOf(
+                navArgument("url") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType },
+                navArgument("thumbnail") { type = NavType.StringType },
+                navArgument("site") { type = NavType.StringType },
+                navArgument("isAudio") { type = NavType.BoolType },
+                navArgument("format") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val args = backStackEntry.arguments!!
+            val url = URLDecoder.decode(args.getString("url").orEmpty(), "UTF-8")
+            val title = URLDecoder.decode(args.getString("title").orEmpty(), "UTF-8")
+            val thumbRaw = URLDecoder.decode(args.getString("thumbnail").orEmpty(), "UTF-8")
+            val thumbnail = if (thumbRaw == "none") null else thumbRaw
+            val site = URLDecoder.decode(args.getString("site").orEmpty(), "UTF-8")
+            val isAudio = args.getBoolean("isAudio")
+            val format = URLDecoder.decode(args.getString("format").orEmpty(), "UTF-8")
+
+            ProgressScreen(
+                url = url,
+                title = title,
+                thumbnailUrl = thumbnail,
+                siteName = site,
+                isAudioOnly = isAudio,
+                formatSelector = format,
+                navController = navController
+            )
         }
     }
 }

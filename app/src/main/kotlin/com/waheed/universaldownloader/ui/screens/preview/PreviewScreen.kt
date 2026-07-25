@@ -1,6 +1,5 @@
 package com.waheed.universaldownloader.ui.screens.preview
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,6 +21,7 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.waheed.universaldownloader.ui.components.GlassCard
 import com.waheed.universaldownloader.ui.components.ShimmerBox
+import com.waheed.universaldownloader.ui.navigation.NavRoutes
 import com.waheed.universaldownloader.ui.theme.AmberPrimary
 import com.waheed.universaldownloader.ui.theme.TextSecondary
 
@@ -71,7 +71,7 @@ fun PreviewScreen(
 @Composable
 private fun LoadingContent() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        ShimmerBox(modifier = androidx.compose.ui.Modifier.size(200.dp), cornerRadius = 20)
+        ShimmerBox(modifier = Modifier.size(200.dp), cornerRadius = 20)
         Spacer(modifier = Modifier.height(16.dp))
         CircularProgressIndicator(color = AmberPrimary)
         Spacer(modifier = Modifier.height(16.dp))
@@ -158,7 +158,31 @@ private fun VideoInfoContent(
 
         Button(
             onClick = {
-                // Progress screen wiring comes with the download engine execution step
+                val chosenFormat = selectedFormat ?: return@Button
+                val isAudio = chosenFormat == "audio"
+                val formatSelector = when (chosenFormat) {
+                    "1080p" -> "bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+                    "720p" -> "bestvideo[height<=720]+bestaudio/best[height<=720]"
+                    "480p" -> "bestvideo[height<=480]+bestaudio/best[height<=480]"
+                    "360p" -> "bestvideo[height<=360]+bestaudio/best[height<=360]"
+                    else -> "bestaudio"
+                }
+                val siteName = try {
+                    java.net.URI(url).host?.removePrefix("www.") ?: "Unknown"
+                } catch (e: Exception) {
+                    "Unknown"
+                }
+
+                navController.navigate(
+                    NavRoutes.progressRoute(
+                        url = url,
+                        title = info.title ?: "Untitled",
+                        thumbnail = info.thumbnail,
+                        site = siteName,
+                        isAudio = isAudio,
+                        format = formatSelector
+                    )
+                )
             },
             enabled = selectedFormat != null,
             modifier = Modifier
@@ -189,9 +213,7 @@ private fun QualityOption(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .then(Modifier),
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             RadioButton(
