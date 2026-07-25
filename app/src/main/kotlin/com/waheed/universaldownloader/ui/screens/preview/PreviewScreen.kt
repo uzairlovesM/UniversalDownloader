@@ -21,6 +21,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.waheed.universaldownloader.ui.components.GlassCard
+import com.waheed.universaldownloader.ui.components.ShimmerBox
 import com.waheed.universaldownloader.ui.theme.AmberPrimary
 import com.waheed.universaldownloader.ui.theme.TextSecondary
 
@@ -70,6 +71,8 @@ fun PreviewScreen(
 @Composable
 private fun LoadingContent() {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        ShimmerBox(modifier = androidx.compose.ui.Modifier.size(200.dp), cornerRadius = 20)
+        Spacer(modifier = Modifier.height(16.dp))
         CircularProgressIndicator(color = AmberPrimary)
         Spacer(modifier = Modifier.height(16.dp))
         Text("Fetching video info…", color = TextSecondary)
