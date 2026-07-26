@@ -82,6 +82,23 @@ android {
 }
 
 dependencies {
+    // === Newly added utility & robustness SDKs ===
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("com.jakewharton.timber:timber:5.0.1")
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("net.lingala.zip4j:zip4j:2.11.5")
+    implementation("androidx.paging:paging-runtime-ktx:3.3.2")
+    implementation("androidx.paging:paging-compose:3.3.2")
+    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
+    implementation("org.jsoup:jsoup:1.18.1")
+    implementation("com.squareup.okhttp3:okhttp-brotli:4.12.0")
+    implementation("org.conscrypt:conscrypt-android:2.5.2")
+    implementation("commons-io:commons-io:2.16.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.8")
+    implementation("androidx.tracing:tracing-ktx:1.2.0")
     // Download engine (yt-dlp wrapper, GPL-3.0)
     implementation("io.github.junkfood02.youtubedl-android:library:0.18.1")
     implementation("io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1")
