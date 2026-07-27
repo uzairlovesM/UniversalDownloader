@@ -15,6 +15,7 @@ import com.waheed.universaldownloader.ui.screens.home.HomeScreen
 import com.waheed.universaldownloader.ui.screens.preview.PreviewScreen
 import com.waheed.universaldownloader.ui.screens.progress.ProgressScreen
 import com.waheed.universaldownloader.ui.screens.player.PlayerScreen
+import com.waheed.universaldownloader.ui.screens.library.LibraryScreen
 import java.net.URLDecoder
 
 @Composable
@@ -96,6 +97,9 @@ fun UDNavGraph(navController: NavHostController = rememberNavController()) {
                 formatSelector = format,
                 navController = navController
             )
+        }
+        composable(NavRoutes.LIBRARY) {
+            LibraryScreen(navController = navController)
         }
         composable(
             route = NavRoutes.PLAYER,
