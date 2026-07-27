@@ -14,6 +14,7 @@ import com.waheed.universaldownloader.ui.screens.onboarding.OnboardingScreen
 import com.waheed.universaldownloader.ui.screens.home.HomeScreen
 import com.waheed.universaldownloader.ui.screens.preview.PreviewScreen
 import com.waheed.universaldownloader.ui.screens.progress.ProgressScreen
+import com.waheed.universaldownloader.ui.screens.player.PlayerScreen
 import java.net.URLDecoder
 
 @Composable
@@ -95,6 +96,12 @@ fun UDNavGraph(navController: NavHostController = rememberNavController()) {
                 formatSelector = format,
                 navController = navController
             )
+        }
+        composable(
+            route = NavRoutes.PLAYER,
+            arguments = listOf(navArgument("fileId") { type = NavType.LongType })
+        ) {
+            PlayerScreen(navController = navController)
         }
     }
 }

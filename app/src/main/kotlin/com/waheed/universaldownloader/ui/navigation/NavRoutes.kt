@@ -30,5 +30,5 @@ object NavRoutes {
         return "progress/$encodedUrl/$encodedTitle/$encodedThumb/$encodedSite/$isAudio/$encodedFormat"
     }
 
-    fun playerRoute(fileId: String) = "player/$fileId"
+    fun playerRoute(fileId: Long) = "player/$fileId"
 }

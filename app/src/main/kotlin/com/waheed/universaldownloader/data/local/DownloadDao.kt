@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface DownloadDao {
+    @Query("SELECT * FROM downloads WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): DownloadEntity?
+
     @Insert
     suspend fun insert(download: DownloadEntity): Long
 
