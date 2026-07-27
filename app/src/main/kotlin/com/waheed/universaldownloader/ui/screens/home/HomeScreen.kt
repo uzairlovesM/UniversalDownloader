@@ -22,6 +22,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Settings
+import com.waheed.universaldownloader.ui.components.UpdatePromptDialog
+import com.waheed.universaldownloader.ads.AdManager
+import com.waheed.universaldownloader.ads.BannerAdView
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +66,7 @@ private val sampleRecents = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavHostController) {
+    UpdatePromptDialog()
     val clipboardManager = LocalClipboardManager.current
     var linkText by remember { mutableStateOf("") }
     var showClipboardHint by remember { mutableStateOf(false) }
@@ -91,6 +96,11 @@ fun HomeScreen(navController: NavHostController) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background)
             )
+        },
+        bottomBar = {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val adManager = remember { com.waheed.universaldownloader.di.getAdManager(context) }
+            BannerAdView(adManager = adManager)
         }
     ) { padding ->
         Column(

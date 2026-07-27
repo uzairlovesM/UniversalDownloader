@@ -16,13 +16,18 @@ import com.waheed.universaldownloader.ui.screens.preview.PreviewScreen
 import com.waheed.universaldownloader.ui.screens.progress.ProgressScreen
 import com.waheed.universaldownloader.ui.screens.player.PlayerScreen
 import com.waheed.universaldownloader.ui.screens.library.LibraryScreen
+import com.waheed.universaldownloader.ui.screens.settings.SettingsScreen
+import com.waheed.universaldownloader.ui.screens.pinlock.PinLockScreen
 import java.net.URLDecoder
 
 @Composable
-fun UDNavGraph(navController: NavHostController = rememberNavController()) {
+fun UDNavGraph(
+    navController: NavHostController = rememberNavController(),
+    startDestination: String = NavRoutes.SPLASH
+) {
     NavHost(
         navController = navController,
-        startDestination = NavRoutes.SPLASH,
+        startDestination = startDestination,
         modifier = Modifier,
         enterTransition = {
             androidx.compose.animation.slideInHorizontally(
@@ -100,6 +105,19 @@ fun UDNavGraph(navController: NavHostController = rememberNavController()) {
         }
         composable(NavRoutes.LIBRARY) {
             LibraryScreen(navController = navController)
+        }
+        composable(NavRoutes.SETTINGS) {
+            SettingsScreen(navController = navController)
+        }
+        composable(NavRoutes.PIN_LOCK_SETUP) {
+            PinLockScreen(onUnlocked = { navController.popBackStack() })
+        }
+        composable(NavRoutes.PIN_LOCK_VERIFY) {
+            PinLockScreen(onUnlocked = {
+                navController.navigate(NavRoutes.HOME) {
+                    popUpTo(NavRoutes.PIN_LOCK_VERIFY) { inclusive = true }
+                }
+            })
         }
         composable(
             route = NavRoutes.PLAYER,

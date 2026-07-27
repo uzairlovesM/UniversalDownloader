@@ -5,6 +5,9 @@ import androidx.room.Room
 import com.waheed.universaldownloader.data.local.AppDatabase
 import com.waheed.universaldownloader.data.local.DownloadDao
 import com.waheed.universaldownloader.engine.YtDlpEngine
+import com.waheed.universaldownloader.data.settings.SettingsDataStore
+import com.waheed.universaldownloader.data.settings.PinManager
+import com.waheed.universaldownloader.ads.AdManager
 import com.waheed.universaldownloader.remoteconfig.RemoteConfigManager
 import dagger.Module
 import dagger.Provides
@@ -41,5 +44,23 @@ object AppModule {
     @Singleton
     fun provideDownloadDao(database: AppDatabase): DownloadDao {
         return database.downloadDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSettingsDataStore(@ApplicationContext context: Context): SettingsDataStore {
+        return SettingsDataStore(context)
+    }
+
+    @Provides
+    @Singleton
+    fun providePinManager(@ApplicationContext context: Context): PinManager {
+        return PinManager(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAdManager(remoteConfigManager: RemoteConfigManager): AdManager {
+        return AdManager(remoteConfigManager)
     }
 }

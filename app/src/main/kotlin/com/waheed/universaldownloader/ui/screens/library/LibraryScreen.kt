@@ -36,6 +36,7 @@ import com.waheed.universaldownloader.data.local.DownloadEntity
 import com.waheed.universaldownloader.ui.components.GlassCard
 import com.waheed.universaldownloader.ui.navigation.NavRoutes
 import com.waheed.universaldownloader.ui.theme.AmberPrimary
+import com.waheed.universaldownloader.util.formatFileSize
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -150,7 +151,7 @@ fun LibraryScreen(
 
                     // Storage summary
                     Text(
-                        text = "Total storage used: ${formatBytes(state.totalStorageBytes)}",
+                        text = "Total storage used: ${formatFileSize(state.totalStorageBytes)}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -256,7 +257,7 @@ private fun DownloadGridItem(
                 modifier = Modifier.padding(8.dp)
             )
             Text(
-                formatBytes(download.fileSizeBytes),
+                formatFileSize(download.fileSizeBytes),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 0.dp).padding(bottom = 8.dp)
@@ -303,7 +304,7 @@ private fun DownloadListItem(
             Column(modifier = Modifier.weight(1f)) {
                 Text(download.title, maxLines = 1, fontWeight = FontWeight.Medium)
                 Text(
-                    "${download.siteName} • ${formatBytes(download.fileSizeBytes)}",
+                    "${download.siteName} • ${formatFileSize(download.fileSizeBytes)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -319,9 +320,3 @@ private fun DownloadListItem(
     }
 }
 
-private fun formatBytes(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    return String.format("%.1f %s", bytes / Math.pow(1024.0, digitGroups.toDouble()), units[digitGroups.coerceIn(0, units.size - 1)])
-}

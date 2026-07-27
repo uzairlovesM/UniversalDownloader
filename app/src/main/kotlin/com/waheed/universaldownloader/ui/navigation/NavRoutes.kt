@@ -11,6 +11,8 @@ object NavRoutes {
     const val LIBRARY = "library"
     const val PLAYER = "player/{fileId}"
     const val SETTINGS = "settings"
+    const val PIN_LOCK_SETUP = "pinlock_setup"
+    const val PIN_LOCK_VERIFY = "pinlock_verify"
 
     fun previewRoute(link: String) = "preview/${URLEncoder.encode(link, "UTF-8")}"
 

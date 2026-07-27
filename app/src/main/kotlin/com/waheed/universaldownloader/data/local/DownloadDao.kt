@@ -17,6 +17,12 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads ORDER BY createdAtMillis DESC")
     fun getAllDownloads(): Flow<List<DownloadEntity>>
 
+    @Query("SELECT * FROM downloads")
+    suspend fun getAllDownloadsOnce(): List<DownloadEntity>
+
+    @Query("DELETE FROM downloads")
+    suspend fun deleteAll()
+
     @Query("SELECT * FROM downloads ORDER BY createdAtMillis DESC LIMIT :limit")
     fun getRecentDownloads(limit: Int = 5): Flow<List<DownloadEntity>>
 
