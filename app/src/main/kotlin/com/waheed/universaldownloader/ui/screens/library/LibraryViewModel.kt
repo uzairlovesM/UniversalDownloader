@@ -44,7 +44,7 @@ data class LibraryUiState(
     val isLoading: Boolean = true
 )
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
     private val downloadDao: DownloadDao

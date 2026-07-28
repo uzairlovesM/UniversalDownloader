@@ -19,8 +19,8 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -81,13 +81,13 @@ fun LibraryScreen(
                         } else {
                             IconButton(onClick = { viewModel.toggleViewMode() }) {
                                 Icon(
-                                    if (state.viewMode == ViewMode.GRID) Icons.Filled.ViewList else Icons.Filled.GridView,
+                                    if (state.viewMode == ViewMode.GRID) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView,
                                     contentDescription = "Toggle view"
                                 )
                             }
                             Box {
                                 IconButton(onClick = { showSortMenu = true }) {
-                                    Icon(Icons.Filled.Sort, contentDescription = "Sort")
+                                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort")
                                 }
                                 DropdownMenu(expanded = showSortMenu, onDismissRequest = { showSortMenu = false }) {
                                     SortMode.entries.forEach { sort ->
