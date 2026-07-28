@@ -24,6 +24,8 @@ import com.waheed.universaldownloader.ui.theme.AmberPrimary
 import com.waheed.universaldownloader.ui.theme.ErrorRed
 import com.waheed.universaldownloader.ui.theme.SuccessGreen
 import com.waheed.universaldownloader.ui.theme.TextSecondary
+import com.waheed.universaldownloader.di.getAdManager
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,9 +63,18 @@ fun ProgressScreen(
         ) {
             when (val current = state) {
                 is DownloadProgressState.InProgress -> InProgressContent(current, title)
-                is DownloadProgressState.Completed -> CompletedContent(title) {
-                    navController.navigate(NavRoutes.LIBRARY) {
-                        popUpTo(NavRoutes.HOME)
+                is DownloadProgressState.Completed -> {
+                    val context = LocalContext.current
+                    LaunchedEffect(current) {
+                        val activity = context as? android.app.Activity
+                        if (activity != null) {
+                            getAdManager(context).showInterstitialIfReady(activity)
+                        }
+                    }
+                    CompletedContent(title) {
+                        navController.navigate(NavRoutes.LIBRARY) {
+                            popUpTo(NavRoutes.HOME)
+                        }
                     }
                 }
                 is DownloadProgressState.Failed -> FailedContent(current.message) {

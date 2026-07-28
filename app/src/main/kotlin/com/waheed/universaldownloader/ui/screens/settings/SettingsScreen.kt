@@ -213,7 +213,8 @@ fun SettingsScreen(
             // 14. Privacy policy
             item {
                 SettingRow(title = "Privacy policy") {
-                    // Placeholder — wire to hosted privacy policy URL
+                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://waheed786dar-cell.github.io/privacy-policy/"))
+                    context.startActivity(intent)
                 }
             }
             // 15. About / build info

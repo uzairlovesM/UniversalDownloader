@@ -29,6 +29,7 @@ class UDApplication : Application(), Configuration.Provider, DefaultLifecycleObs
         super<Application>.onCreate()
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
         adManager.initialize(this)
+        adManager.preloadInterstitial(this)
     }
 
     override fun onStop(owner: LifecycleOwner) {
