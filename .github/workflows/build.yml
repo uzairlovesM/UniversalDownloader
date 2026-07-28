@@ -87,6 +87,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: lint-report
           path: app/build/reports/lint-results-debug.html
           if-no-files-found: ignore
@@ -99,6 +100,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: unit-test-report
           path: app/build/reports/tests/testDebugUnitTest/**
           if-no-files-found: ignore
@@ -188,18 +190,13 @@ jobs:
 
           cat RELEASE_NOTES.txt
 
-      - name: Upload Debug APK
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: ignore
+
 
       - name: Upload Universal APK (install this)
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: universal-apk
           path: artifacts/universal/*.apk
           if-no-files-found: ignore
@@ -208,6 +205,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: split-abi-apks
           path: artifacts/split-abi/*.apk
           if-no-files-found: ignore
@@ -216,6 +214,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: app-bundle-aab
           path: artifacts/aab/*.aab
           if-no-files-found: ignore
@@ -224,6 +223,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: release-info
           path: |
             artifacts/checksums.sha256.txt
@@ -231,10 +231,11 @@ jobs:
             artifacts/size-report.txt
           if-no-files-found: ignore
 
-      - name: Upload full build logs
-        if: always()
+      - name: Upload full build logs (only on failure)
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
+          retention-days: 3
           name: build-logs
           path: |
             app/build/outputs/logs/**
