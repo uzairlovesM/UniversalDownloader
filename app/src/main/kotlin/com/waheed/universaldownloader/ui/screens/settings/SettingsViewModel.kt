@@ -50,19 +50,20 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = combine(
         settingsDataStore.themeMode,
         settingsDataStore.defaultQuality,
-        settingsDataStore.wifiOnlyDownloads,
-        settingsDataStore.notifyOnComplete,
-        settingsDataStore.autoDeleteAfterShare,
-        settingsDataStore.downloadFolderName
-    ) { theme, quality, wifiOnly, notify, autoDelete, folder ->
+        settingsDataStore.wifiOnlyDownloads
+    ) { theme, quality, wifiOnly ->
+        Triple(theme, quality, wifiOnly)
+    }.combine(settingsDataStore.notifyOnComplete) { (theme, quality, wifiOnly), notify ->
         SettingsUiState(
             themeMode = theme,
             defaultQuality = quality,
             wifiOnlyDownloads = wifiOnly,
-            notifyOnComplete = notify,
-            autoDeleteAfterShare = autoDelete,
-            downloadFolderName = folder
+            notifyOnComplete = notify
         )
+    }.combine(settingsDataStore.autoDeleteAfterShare) { state, autoDelete ->
+        state.copy(autoDeleteAfterShare = autoDelete)
+    }.combine(settingsDataStore.downloadFolderName) { state, folder ->
+        state.copy(downloadFolderName = folder)
     }.combine(downloadDao.getTotalCount()) { state, count ->
         state.copy(downloadCount = count)
     }.combine(_cacheSizeBytes) { state, cache ->
