@@ -1,0 +1,161 @@
+image: eclipse-temurin:17-jdk
+
+stages:
+  - prepare
+  - build
+  - release
+
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG-gradle"
+  paths:
+    - .gradle/wrapper
+    - .gradle/caches
+
+before_script:
+  - chmod +x gradlew
+  - echo "$KEYSTORE_BASE64" | base64 -d > release.keystore.jks
+  - |
+    if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+      echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+    else
+      echo "Skipping — Firebase not configured"
+    fi
+
+metadata:
+  stage: prepare
+  script:
+    - echo "COMMIT_SHA=$CI_COMMIT_SHORT_SHA" >> build.env
+    - echo "COMMIT_AUTHOR=$CI_COMMIT_AUTHOR" >> build.env
+    - echo "COMMIT_MSG=$CI_COMMIT_MESSAGE" >> build.env
+    - |
+      LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+      if [ -n "$LAST_TAG" ]; then
+        echo "Changes since $LAST_TAG:" > changelog.txt
+        git log "$LAST_TAG"..HEAD --pretty="- %s (%an)" >> changelog.txt
+      else
+        echo "Initial build — recent commit history:" > changelog.txt
+        git log --pretty="- %s (%an)" | head -30 >> changelog.txt
+      fi
+    - cat changelog.txt
+  artifacts:
+    reports:
+      dotenv: build.env
+    paths:
+      - changelog.txt
+    expire_in: 7 days
+
+lint:
+  stage: build
+  needs: []
+  script:
+    - ./gradlew lintDebug --stacktrace
+  artifacts:
+    when: always
+    paths:
+      - app/build/reports/lint-results-debug.html
+    expire_in: 3 days
+  allow_failure: true
+
+unit_tests:
+  stage: build
+  needs: []
+  script:
+    - ./gradlew testDebugUnitTest --stacktrace
+  artifacts:
+    when: always
+    paths:
+      - app/build/reports/tests/testDebugUnitTest/
+    expire_in: 3 days
+  allow_failure: true
+
+dependency_scan:
+  stage: build
+  needs: []
+  script:
+    - ./gradlew app:dependencies --configuration releaseRuntimeClasspath > dependency-tree.txt || true
+    - |
+      echo "=== Checking for known-risky version patterns (manual review recommended) ==="
+      grep -E "SNAPSHOT|alpha|beta|rc[0-9]" dependency-tree.txt || echo "No pre-release dependencies found"
+  artifacts:
+    when: always
+    paths:
+      - dependency-tree.txt
+    expire_in: 7 days
+  allow_failure: true
+
+build_debug:
+  stage: build
+  needs: []
+  script:
+    - ./gradlew assembleDebug --stacktrace
+  artifacts:
+    paths:
+      - app/build/outputs/apk/debug/*.apk
+    expire_in: 3 days
+
+build_release:
+  stage: build
+  needs: []
+  script:
+    - ./gradlew assembleRelease bundleRelease --stacktrace --parallel
+  artifacts:
+    paths:
+      - app/build/outputs/apk/release/*.apk
+      - app/build/outputs/bundle/release/*.aab
+    expire_in: 7 days
+  variables:
+    KEYSTORE_PASSWORD: $KEYSTORE_PASSWORD
+    KEY_PASSWORD: $KEY_PASSWORD
+
+package_release:
+  stage: release
+  needs: ["build_release", "metadata"]
+  script:
+    - mkdir -p artifacts/universal artifacts/split-abi artifacts/aab
+    - find app/build/outputs/apk/release -iname "*universal*.apk" -exec cp {} artifacts/universal/ \; || true
+    - find app/build/outputs/apk/release -iname "*.apk" ! -iname "*universal*" -exec cp {} artifacts/split-abi/ \; || true
+    - find app/build/outputs/bundle/release -iname "*.aab" -exec cp {} artifacts/aab/ \; || true
+    - for f in artifacts/universal/*.apk; do [ -f "$f" ] && mv "$f" "artifacts/universal/UniversalDownloader-universal-${COMMIT_SHA}.apk"; done
+    - cd artifacts && find . -type f \( -iname "*.apk" -o -iname "*.aab" \) -exec sha256sum {} \; > checksums.sha256.txt
+    - |
+      echo "=== APK Size Report ===" > size-report.txt
+      for f in universal/*.apk split-abi/*.apk; do
+        [ -f "$f" ] && echo "$(basename "$f"): $(du -h "$f" | cut -f1)" >> size-report.txt
+      done
+    - cat size-report.txt
+    - |
+      cat > RELEASE_NOTES.txt << NOTES
+      Universal Downloader — Build Artifacts Guide
+      Commit: ${COMMIT_SHA} by ${COMMIT_AUTHOR}
+      Message: ${COMMIT_MSG}
+
+      UNIVERSAL APK: install this — works on all devices.
+      SPLIT ABI APKs: pick the one matching your device (arm64-v8a covers most phones).
+      AAB: for future Play Store submission.
+      NOTES
+    - cat RELEASE_NOTES.txt
+  artifacts:
+    paths:
+      - artifacts/universal/
+      - artifacts/split-abi/
+      - artifacts/aab/
+      - artifacts/checksums.sha256.txt
+      - artifacts/size-report.txt
+      - artifacts/RELEASE_NOTES.txt
+    expire_in: 7 days
+
+gitlab_release:
+  stage: release
+  needs: ["package_release"]
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  script:
+    - echo "Creating release for tag $CI_COMMIT_TAG"
+  release:
+    tag_name: '$CI_COMMIT_TAG'
+    description: 'artifacts/RELEASE_NOTES.txt'
