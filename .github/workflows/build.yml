@@ -16,11 +16,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     timeout-minutes: 45
 
     steps:
@@ -35,6 +36,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      # Submits this repo's dependency tree to GitHub's Dependency Graph (Insights > Dependency graph),
+      # which also powers Dependabot security alerts for this project going forward.
+      - name: Submit dependency graph
+        uses: gradle/actions/dependency-submission@v4
+        continue-on-error: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -73,7 +80,6 @@ jobs:
             echo "Initial build — full commit history:" > changelog.txt
             git log --pretty="- %s (%an)" | head -30 >> changelog.txt
           fi
-          echo "=== Changelog ==="
           cat changelog.txt
           {
             echo "changelog<<CHANGELOG_EOF"
@@ -113,46 +119,76 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Build Release APKs (universal + split ABIs)
+      # Universal APK only — per project decision, split-ABI/AAB loose files are no longer
+      # published as separate artifacts. The AAB is still built internally because it's the
+      # required INPUT for generating the .apks bundle below via bundletool.
+      - name: Build Release Universal APK
         run: ./gradlew assembleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        continue-on-error: true
 
-      - name: Build Release AAB (App Bundle)
+      - name: Build Release AAB (required input for .apks bundle)
         run: ./gradlew bundleRelease --stacktrace
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      # bundletool converts the AAB into a single .apks file — a proper zip-based APK Set
+      # containing base.apk + split APKs for every device config, installable via
+      # `bundletool install-apks` or by devices/installers that understand the .apks format.
+      - name: Download bundletool
+        run: |
+          curl -sL -o bundletool.jar \
+            "https://github.com/google/bundletool/releases/latest/download/bundletool-all.jar"
+
+      - name: Generate .apks bundle from AAB
+        run: |
+          AAB_FILE=$(find app/build/outputs/bundle/release -iname "*.aab" | head -1)
+          java -jar bundletool.jar build-apks \
+            --bundle="$AAB_FILE" \
+            --output=artifacts-apks/UniversalDownloader.apks \
+            --ks=release.keystore.jks \
+            --ks-pass=pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --ks-key-alias=universaldownloader \
+            --key-pass=pass:${{ secrets.KEY_PASSWORD }} \
+            --mode=universal
+          mkdir -p artifacts-apks-full
+          java -jar bundletool.jar build-apks \
+            --bundle="$AAB_FILE" \
+            --output=artifacts-apks-full/UniversalDownloader-full.apks \
+            --ks=release.keystore.jks \
+            --ks-pass=pass:${{ secrets.KEYSTORE_PASSWORD }} \
+            --ks-key-alias=universaldownloader \
+            --key-pass=pass:${{ secrets.KEY_PASSWORD }}
         continue-on-error: true
 
       - name: Organize and label release artifacts
         if: always()
         run: |
-          mkdir -p artifacts/universal artifacts/split-abi artifacts/aab
+          mkdir -p artifacts/universal artifacts/apks
 
           find app/build/outputs/apk/release -iname "*universal*.apk" -exec cp {} artifacts/universal/ \; 2>/dev/null || true
-          find app/build/outputs/apk/release -iname "*.apk" ! -iname "*universal*" -exec cp {} artifacts/split-abi/ \; 2>/dev/null || true
-          find app/build/outputs/bundle/release -iname "*.aab" -exec cp {} artifacts/aab/ \; 2>/dev/null || true
+          find artifacts-apks-full -iname "*.apks" -exec cp {} artifacts/apks/ \; 2>/dev/null || true
 
           SHA="${{ steps.meta.outputs.short_sha }}"
           for f in artifacts/universal/*.apk; do
             [ -f "$f" ] && mv "$f" "artifacts/universal/UniversalDownloader-universal-$SHA.apk"
           done
+          for f in artifacts/apks/*.apks; do
+            [ -f "$f" ] && mv "$f" "artifacts/apks/UniversalDownloader-$SHA.apks"
+          done
 
           echo "=== Universal APK ==="
           ls -la artifacts/universal/ 2>/dev/null || echo "none"
-          echo "=== Split ABI APKs ==="
-          ls -la artifacts/split-abi/ 2>/dev/null || echo "none"
-          echo "=== AAB ==="
-          ls -la artifacts/aab/ 2>/dev/null || echo "none"
+          echo "=== APKS Bundle (base + all splits, one installable file) ==="
+          ls -la artifacts/apks/ 2>/dev/null || echo "none"
 
       - name: Generate APK size report
         if: always()
         run: |
-          echo "=== APK Size Report ===" > artifacts/size-report.txt
-          for f in artifacts/universal/*.apk artifacts/split-abi/*.apk; do
+          echo "=== APK / APKS Size Report ===" > artifacts/size-report.txt
+          for f in artifacts/universal/*.apk artifacts/apks/*.apks; do
             if [ -f "$f" ]; then
               SIZE=$(du -h "$f" | cut -f1)
               echo "$(basename "$f"): $SIZE" >> artifacts/size-report.txt
@@ -164,7 +200,7 @@ jobs:
         if: always()
         run: |
           cd artifacts
-          find . -type f \( -iname "*.apk" -o -iname "*.aab" \) -exec sha256sum {} \; > checksums.sha256.txt 2>/dev/null || true
+          find . -type f \( -iname "*.apk" -o -iname "*.apks" \) -exec sha256sum {} \; > checksums.sha256.txt 2>/dev/null || true
 
           cat > RELEASE_NOTES.txt << NOTES_EOF
           Universal Downloader — Build Artifacts Guide
@@ -176,25 +212,18 @@ jobs:
           CHANGELOG:
           ${{ steps.changelog.outputs.changelog }}
 
-          UNIVERSAL APK (install this — works on all Android devices):
-            Download "universal-apk" artifact -> extract -> install the single .apk inside.
+          UNIVERSAL APK (simplest — install this directly):
+            Single .apk file, works on all Android devices, larger file size.
 
-          SPLIT ABI APKs (smaller size, advanced users only):
-            Pick the ONE file matching your device's processor (arm64-v8a covers almost all
-            modern phones) -> install only that one. Do not install all 4.
-
-          AAB (App Bundle):
-            For future Play Store submission or advanced bundle-aware installers.
+          APKS BUNDLE (base.apk + per-device splits in one zip-based file):
+            Install with bundletool: java -jar bundletool.jar install-apks --apks=FILE.apks
+            Or use any installer that supports the .apks / APK Set format.
 
           Verify integrity: compare checksums.sha256.txt against the downloaded file.
-          See size-report.txt for per-artifact file sizes.
           NOTES_EOF
-
           cat RELEASE_NOTES.txt
 
-
-
-      - name: Upload Universal APK (install this)
+      - name: Upload Universal APK
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -203,22 +232,13 @@ jobs:
           path: artifacts/universal/*.apk
           if-no-files-found: ignore
 
-      - name: Upload Split ABI APKs (advanced)
+      - name: Upload APKS Bundle
         if: always()
         uses: actions/upload-artifact@v4
         with:
           retention-days: 3
-          name: split-abi-apks
-          path: artifacts/split-abi/*.apk
-          if-no-files-found: ignore
-
-      - name: Upload AAB (App Bundle)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          retention-days: 3
-          name: app-bundle-aab
-          path: artifacts/aab/*.aab
+          name: apks-bundle
+          path: artifacts/apks/*.apks
           if-no-files-found: ignore
 
       - name: Upload checksums + release notes + size report
@@ -249,9 +269,13 @@ jobs:
         run: |
           {
             echo "## Build Summary"
-            echo "**Commit:** ${{ steps.meta.outputs.short_sha }} by ${{ steps.meta.outputs.commit_author }}"
-            echo "**Message:** ${{ steps.meta.outputs.commit_msg }}"
-            echo "**Built:** ${{ steps.meta.outputs.build_date }}"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Commit | ${{ steps.meta.outputs.short_sha }} |"
+            echo "| Author | ${{ steps.meta.outputs.commit_author }} |"
+            echo "| Message | ${{ steps.meta.outputs.commit_msg }} |"
+            echo "| Built | ${{ steps.meta.outputs.build_date }} |"
             echo ""
             echo "### Artifact sizes"
             echo '```'
@@ -268,8 +292,7 @@ jobs:
           body_path: artifacts/RELEASE_NOTES.txt
           files: |
             artifacts/universal/*.apk
-            artifacts/split-abi/*.apk
-            artifacts/aab/*.aab
+            artifacts/apks/*.apks
             artifacts/checksums.sha256.txt
           draft: false
           prerelease: true

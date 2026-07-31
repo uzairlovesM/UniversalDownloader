@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Universal Downloader</string>
+    <string name="shortcut_paste_short">Paste &amp; Download</string>
+    <string name="shortcut_paste_long">Paste link and download instantly</string>
+    <string name="shortcut_library_short">Library</string>
+    <string name="shortcut_library_long">Open your download library</string>
 </resources>
