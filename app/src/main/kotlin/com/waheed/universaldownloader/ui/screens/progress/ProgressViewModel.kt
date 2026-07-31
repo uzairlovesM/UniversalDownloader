@@ -21,7 +21,12 @@ import java.util.UUID
 import javax.inject.Inject
 
 sealed class DownloadProgressState {
-    data class InProgress(val percent: Float, val etaSeconds: Long) : DownloadProgressState()
+    data class InProgress(
+        val percent: Float,
+        val etaSeconds: Long,
+        val speed: String? = null,
+        val attempt: Int = 1
+    ) : DownloadProgressState()
     data class Completed(val entity: DownloadEntity) : DownloadProgressState()
     data class Failed(val message: String) : DownloadProgressState()
 }
@@ -75,7 +80,15 @@ class ProgressViewModel @Inject constructor(
                 when (workInfo.state) {
                     WorkInfo.State.RUNNING -> {
                         val progress = workInfo.progress.getFloat("progress", 0f)
-                        _state.value = DownloadProgressState.InProgress(progress, 0)
+                        val speed = workInfo.progress.getString("speed")
+                        val eta = workInfo.progress.getLong("eta", 0L)
+                        val attempt = workInfo.progress.getInt("attempt", 1)
+                        _state.value = DownloadProgressState.InProgress(
+                            percent = progress,
+                            etaSeconds = eta,
+                            speed = speed?.takeIf { it.isNotBlank() },
+                            attempt = attempt
+                        )
                     }
                     WorkInfo.State.SUCCEEDED -> {
                         val entityId = workInfo.outputData.getLong(DownloadWorker.KEY_RESULT_ENTITY_ID, -1L)

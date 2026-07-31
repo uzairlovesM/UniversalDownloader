@@ -20,6 +20,16 @@ class YtDlpEngine @Inject constructor(
     private val context: Context
 ) {
     private var isInitialized = false
+    private var lastInitError: String? = null
+
+    private val speedRegex = Regex("at\\s+([\\d.]+\\s*[KMG]?i?B/s)")
+
+    /** Extracts a human-readable speed string (e.g. "1.23MiB/s") from a raw yt-dlp progress line. */
+    private fun parseSpeed(line: String): String? {
+        return speedRegex.find(line)?.groupValues?.get(1)?.trim()
+    }
+
+    fun getLastInitError(): String? = lastInitError
 
     /** Must be called once (e.g. in UDApplication.onCreate) before any other method. */
     suspend fun initialize(): Boolean = withContext(Dispatchers.IO) {
@@ -28,8 +38,11 @@ class YtDlpEngine @Inject constructor(
             YoutubeDL.getInstance().init(context)
             FFmpeg.getInstance().init(context)
             isInitialized = true
+            lastInitError = null
             true
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            lastInitError = "${e.javaClass.simpleName}: ${e.message}"
+            android.util.Log.e("YtDlpEngine", "Engine init failed", e)
             false
         }
     }
@@ -49,7 +62,7 @@ class YtDlpEngine @Inject constructor(
         url: String,
         outputDir: String,
         formatSelector: String = "best",
-        onProgress: (progressPercent: Float, etaSeconds: Long, line: String) -> Unit = { _, _, _ -> }
+        onProgress: (progressPercent: Float, etaSeconds: Long, speed: String?, line: String) -> Unit = { _, _, _, _ -> }
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val request = YoutubeDLRequest(url).apply {
@@ -58,7 +71,7 @@ class YtDlpEngine @Inject constructor(
                 addOption("--no-mtime")
             }
             val response = YoutubeDL.getInstance().execute(request) { progress, eta, line ->
-                onProgress(progress, eta, line)
+                onProgress(progress, eta, parseSpeed(line), line)
             }
             response.out
         }
@@ -68,7 +81,7 @@ class YtDlpEngine @Inject constructor(
     suspend fun downloadAudioOnly(
         url: String,
         outputDir: String,
-        onProgress: (progressPercent: Float, etaSeconds: Long, line: String) -> Unit = { _, _, _ -> }
+        onProgress: (progressPercent: Float, etaSeconds: Long, speed: String?, line: String) -> Unit = { _, _, _, _ -> }
     ): Result<String> = withContext(Dispatchers.IO) {
         runCatching {
             val request = YoutubeDLRequest(url).apply {
@@ -78,7 +91,7 @@ class YtDlpEngine @Inject constructor(
                 addOption("--no-mtime")
             }
             val response = YoutubeDL.getInstance().execute(request) { progress, eta, line ->
-                onProgress(progress, eta, line)
+                onProgress(progress, eta, parseSpeed(line), line)
             }
             response.out
         }

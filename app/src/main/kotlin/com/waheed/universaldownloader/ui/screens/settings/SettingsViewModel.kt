@@ -76,7 +76,7 @@ class SettingsViewModel @Inject constructor(
         state.copy(updateAvailable = update)
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
+        started = SharingStarted.Eagerly,
         initialValue = SettingsUiState()
     )
 

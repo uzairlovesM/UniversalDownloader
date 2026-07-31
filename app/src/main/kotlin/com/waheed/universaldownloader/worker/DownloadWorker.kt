@@ -56,9 +56,16 @@ class DownloadWorker @AssistedInject constructor(
             outputDir = outputDir,
             isAudioOnly = isAudio,
             formatSelector = format,
-            onProgress = { percent, _ ->
-                setProgressAsync(workDataOf("progress" to percent))
-                updateNotification(title, percent.toInt())
+            onProgress = { progress ->
+                setProgressAsync(
+                    workDataOf(
+                        "progress" to progress.percent,
+                        "speed" to (progress.speed ?: ""),
+                        "eta" to progress.etaSeconds,
+                        "attempt" to progress.attempt
+                    )
+                )
+                updateNotification(title, progress.percent.toInt(), progress.speed)
             }
         )
 
@@ -84,10 +91,11 @@ class DownloadWorker @AssistedInject constructor(
         }
     }
 
-    private fun buildForegroundInfo(title: String, progress: Int): ForegroundInfo {
+    private fun buildForegroundInfo(title: String, progress: Int, speed: String? = null): ForegroundInfo {
+        val speedText = if (speed != null) " • $speed" else ""
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText("Downloading… $progress%")
+            .setContentText("Downloading… $progress%$speedText")
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress, false)
             .setOngoing(true)
@@ -100,10 +108,11 @@ class DownloadWorker @AssistedInject constructor(
         }
     }
 
-    private fun updateNotification(title: String, progress: Int) {
+    private fun updateNotification(title: String, progress: Int, speed: String? = null) {
+        val speedText = if (speed != null) " • $speed" else ""
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText("Downloading… $progress%")
+            .setContentText("Downloading… $progress%$speedText")
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, progress, false)
             .setOngoing(true)

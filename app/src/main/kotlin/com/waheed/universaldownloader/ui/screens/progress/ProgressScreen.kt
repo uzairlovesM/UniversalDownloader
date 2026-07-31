@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -117,10 +119,70 @@ private fun InProgressContent(state: DownloadProgressState.InProgress, title: St
             textAlign = TextAlign.Center,
             maxLines = 2
         )
-        if (state.etaSeconds > 0) {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text("About ${state.etaSeconds}s remaining", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+
+        // Speed + ETA row — the actual speed meter
+        if (state.speed != null || state.etaSeconds > 0) {
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (state.speed != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Filled.Speed,
+                            contentDescription = "Download speed",
+                            tint = AmberPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            state.speed,
+                            color = AmberPrimary,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                if (state.etaSeconds > 0) {
+                    Text(
+                        "ETA ${formatEta(state.etaSeconds)}",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         }
+
+        // Retry attempt indicator — only shown when a retry is actually in progress
+        if (state.attempt > 1) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = "Retrying",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    "Retry attempt ${state.attempt}",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+    }
+}
+
+/** Formats seconds into a compact "Xm Ys" or "Ys" string for the ETA display. */
+private fun formatEta(seconds: Long): String {
+    return if (seconds >= 60) {
+        val minutes = seconds / 60
+        val secs = seconds % 60
+        "${minutes}m ${secs}s"
+    } else {
+        "${seconds}s"
     }
 }
 
